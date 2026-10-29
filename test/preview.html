@@ -9,7 +9,7 @@
 body{display:block;height:auto;min-height:100vh;padding:28px;overflow:auto;background-image:linear-gradient(135deg,color-mix(in srgb,var(--blue) 15%,transparent),transparent 60%)}
 .preview{max-width:1000px;margin:auto}.preview h1{font-size:24px;margin:0 0 8px}.preview p{color:var(--fg-muted);line-height:1.5}.preview-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:20px 0}.preview-controls select{background:var(--surface);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:7px}
 #grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:auto;height:auto;min-height:0;gap:18px;overflow:visible;flex:none;width:100%}
-.task-cell{min-height:260px;backdrop-filter:blur(12px)}.task-body{padding:14px}.preview-card{padding:14px;background:var(--surface);border:1px solid var(--border-muted);border-left:4px solid var(--green);border-radius:8px;margin-bottom:12px}.preview-card strong{display:block;margin-bottom:6px;font-weight:500}.preview-card small{color:var(--fg-muted)}.preview-card.waiting{border-left-color:var(--red)}.preview-tray{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}.preview-note{margin-top:22px;font-size:12px}
+.task-cell{min-height:260px;backdrop-filter:blur(12px)}.task-body{padding:14px}.session-card{margin-bottom:12px}.preview-tray{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}.preview-note{margin-top:22px;font-size:12px}
 @media(max-width:600px){body{padding:16px}#grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -17,6 +17,6 @@ body{display:block;height:auto;min-height:100vh;padding:28px;overflow:auto;backg
 <h1>Task Tints</h1><p>A colour for each task, layered into your theme.</p>
 <div class="preview-controls"><label>Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="pink">Pink · translucent</option><option value="pixel-cats">Pixel Cats · translucent</option><option value="cyberpunk">Cyberpunk · translucent</option><option value="transparent">Fully transparent</option></select></label><button id="toggle-hues">Disable Task Tints</button><button id="minimise">Minimise Release prep</button></div>
 <div id="grid"></div>
-<p class="preview-note">Open a task’s ⋮ menu to change its colour. Session cards and status colours keep their theme styling.</p>
+<p class="preview-note">Open a task’s ⋮ menu to change its colour. The tint reaches card bodies; status bars and halos use the theme’s status colours.</p>
 </main><script type="module" src="/test/preview.js"></script></body>
 </html>

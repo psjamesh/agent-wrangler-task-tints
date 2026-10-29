@@ -34,15 +34,20 @@ export function neighbour(cells, index, key) {
 const validId = /^[a-zA-Z0-9_-]{1,120}$/;
 const validColour = /^#[0-9a-f]{6}$/i;
 
+export function opacityEffect(adjustment) {
+  return Math.sign(adjustment) * (adjustment / 100) ** 2;
+}
+
 function tint(source, colour, adjustment) {
   let channels = 'r g b';
   if (colour) {
     const [r, g, b] = [1, 3, 5].map(offset => parseInt(colour.slice(offset, offset + 2), 16));
     channels = `calc(r * 0.82 + ${r} * 0.18) calc(g * 0.82 + ${g} * 0.18) calc(b * 0.82 + ${b} * 0.18)`;
   }
-  const alpha = adjustment < 0 ? `calc(alpha * ${(100 + adjustment) / 100})`
-    : adjustment > 0 ? `calc(alpha + (1 - alpha) * ${adjustment / 100})` : 'alpha';
-  return `rgb(from var(${source}) ${channels} / ${alpha})`;
+  const effect = opacityEffect(adjustment);
+  const alpha = effect < 0 ? `calc(alpha * ${1 + effect})`
+    : effect > 0 ? `calc(alpha + (1 - alpha) * ${effect})` : 'alpha';
+  return `rgb(from ${source} ${channels} / ${alpha})`;
 }
 
 export function taskStyles(colours = {}, adhocId = 'adhoc', opacityAdjustments = {}) {
@@ -54,8 +59,10 @@ export function taskStyles(colours = {}, adhocId = 'adhoc', opacityAdjustments =
     if (!colour && !adjustment) return [];
     const tile = taskId === adhocId ? '.task-cell.no-task' : `.task-cell[data-taskid="${taskId}"]`;
     return [
-      `#grid ${tile}:not(.drop-target){background-color:${tint('--tile-bg', colour, adjustment)}}`,
-      `#grid .switcher-pill[data-taskid="${taskId}"]{background-color:${tint('--pill-idle-bg', colour, adjustment)}}`,
+      `#grid ${tile}:not(.drop-target){background-color:${tint('var(--tile-bg)', colour, adjustment)}}`,
+      `#grid .switcher-pill[data-taskid="${taskId}"]{background-color:${tint('var(--pill-idle-bg)', colour, adjustment)}}`,
+      `#grid ${tile} :is(.session-card,.worker-row,.subagent-row,.snoozed-row){background-color:${tint('var(--surface)', colour, adjustment)}}`,
+      `#grid ${tile} :is(.session-card,.worker-row,.subagent-row):hover{background-color:${tint('var(--surface-2)', colour, adjustment)}}`,
     ];
   }).join('\n');
 }

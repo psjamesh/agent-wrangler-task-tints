@@ -20,9 +20,9 @@ async function saveTask(msg, host, update) {
 export default {
   id: 'hues',
   label: 'Task Tints',
-  description: 'Choose task colours and adjust transparency relative to your theme.',
+  description: 'Tint tasks and their cards, with transparency relative to your theme.',
   author: 'Task Tints contributors',
-  help: 'Open a task’s Colour… action to choose a hexagon or adjust transparency relative to your theme. Reset restores the theme’s colour and transparency. Turning Task Tints off keeps saved choices.',
+  help: 'Open a task’s Colour… action to tint its background, cards and minimised pill. Transparency follows your theme, with gentler changes near the slider’s centre. Reset restores the theme. Turning Task Tints off keeps saved choices.',
   dir: path.dirname(fileURLToPath(import.meta.url)),
   defaultEnabled: true,
   requires: ['tasks:read', 'board:rebuild', 'board:broadcast'],

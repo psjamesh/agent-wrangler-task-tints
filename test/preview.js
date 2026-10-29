@@ -40,12 +40,17 @@ function open(task, event) {
 
 function render() {
   const grid = document.getElementById('grid');
-  grid.innerHTML = tasks.filter(task => task.id !== 't_release' || !minimised).map(task => `<section class="task-cell" data-taskid="${task.id}"><div class="task-head"><span class="task-name">${task.name}</span><button class="task-actions-btn" aria-label="${task.name} actions">⋮</button></div><div class="task-body"><div class="preview-card"><strong>${task.id === 't_release' ? 'Review release notes' : 'Explore the next idea'}</strong><small>Working</small></div><div class="preview-card waiting"><strong>Check the details</strong><small>Needs input</small></div><div class="task-body-ext" data-task-body="${task.id}"></div></div></section>`).join('') + `<div class="preview-tray">${minimised ? '<button class="switcher-pill" data-taskid="t_release">Release prep <span class="switcher-dot working"></span></button>' : ''}<button class="switcher-pill" data-taskid="t_research">Research <span class="switcher-dot needs-you"></span></button></div>`;
+  grid.innerHTML = tasks.filter(task => task.id !== 't_release' || !minimised).map(task => `<section class="task-cell" data-taskid="${task.id}"><div class="task-head"><span class="task-name">${task.name}</span><button class="task-actions-btn" aria-label="${task.name} actions">⋮</button></div><div class="task-body"><div class="session-card working" role="button" tabindex="0"><span class="card-bar"><span>Busy</span></span><div class="card-name-row"><span class="card-name">${task.id === 't_release' ? 'Review release notes' : 'Explore the next idea'}</span></div><div class="card-loc">Working</div></div><div class="session-card needs-you" role="button" tabindex="0"><span class="card-bar"><span>Reply</span></span><div class="card-name-row"><span class="card-name">Check the details</span></div><div class="card-loc">Needs input</div></div><div class="task-body-ext" data-task-body="${task.id}"></div></div></section>`).join('') + `<div class="preview-tray">${minimised ? '<button class="switcher-pill" data-taskid="t_release">Release prep <span class="switcher-dot working"></span></button>' : ''}<button class="switcher-pill" data-taskid="t_research">Research <span class="switcher-dot needs-you"></span></button></div>`;
   for (const task of tasks) {
     const cell = grid.querySelector(`.task-cell[data-taskid="${task.id}"]`);
     cell?.querySelector('.task-actions-btn').addEventListener('click', event => open(task, event));
     cell?.addEventListener('contextmenu', event => { event.preventDefault(); open(task, event); });
   }
+  for (const card of grid.querySelectorAll('.session-card')) card.addEventListener('click', () => {
+    const selected = card.classList.contains('selected');
+    for (const other of grid.querySelectorAll('.session-card')) other.classList.remove('selected');
+    card.classList.toggle('selected', !selected);
+  });
   grid.querySelector('.switcher-pill[data-taskid="t_release"]')?.addEventListener('click', () => { minimised = false; render(); });
   sync();
 }
@@ -57,6 +62,8 @@ document.getElementById('theme').addEventListener('change', async event => {
   if (theme === 'transparent') {
     document.body.style.setProperty('--tile-bg', 'rgba(20, 30, 40, 0)');
     document.body.style.setProperty('--pill-idle-bg', 'rgba(30, 40, 50, 0)');
+    document.body.style.setProperty('--surface', 'rgba(20, 30, 40, 0)');
+    document.body.style.setProperty('--surface-2', 'rgba(30, 40, 50, 0)');
   } else if (theme !== 'light' && theme !== 'dark') {
     const definition = await (await fetch(`/theme/${theme}`)).json();
     document.body.classList.toggle('light', definition.base === 'light');

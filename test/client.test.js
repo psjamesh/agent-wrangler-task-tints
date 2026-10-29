@@ -143,8 +143,8 @@ test('transparency previews while dragging, saves on release and keeps the picke
   slider.value = '-50';
   slider.dispatchEvent(new f.window.Event('input', { bubbles: true }));
   assert.deepEqual(f.frames, []);
-  assert.ok(f.document.querySelector('style[data-hues]').textContent.includes('calc(alpha * 0.5)'));
-  assert.match(slider.getAttribute('aria-valuetext'), /transparent/);
+  assert.ok(f.document.querySelector('style[data-hues]').textContent.includes('calc(alpha * 0.75)'));
+  assert.equal(slider.getAttribute('aria-valuetext'), '25% towards transparent');
   slider.dispatchEvent(new f.window.Event('change', { bubbles: true }));
   assert.deepEqual(f.frames[0], { type: 'hues-opacity-set', requestId: f.frames[0].requestId, taskId: 't_release', adjustment: -50 });
   assert.equal(slider.disabled, true);
@@ -204,7 +204,7 @@ test('a delayed transparency acknowledgement cannot replace a newer graph adjust
   f.body.update(f.host, f.ctx, { hues: { colours: { t_release: '#0000ff' }, opacityAdjustments: { t_release: 75 } } });
   f.message({ kind: 'saved', requestId: f.frames[0].requestId, adjustment: -50, ok: true });
   assert.equal(slider.value, '75');
-  assert.ok(f.document.querySelector('style[data-hues]').textContent.includes('(1 - alpha) * 0.75'));
+  assert.ok(f.document.querySelector('style[data-hues]').textContent.includes('(1 - alpha) * 0.5625'));
   assert.equal(f.document.querySelector('[data-colour="#0000ff"]').getAttribute('aria-pressed'), 'true');
 });
 

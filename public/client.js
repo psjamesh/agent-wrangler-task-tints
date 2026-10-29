@@ -1,4 +1,4 @@
-import { colourWheel, neighbour, taskStyles } from './colours.js';
+import { colourWheel, neighbour, opacityEffect, taskStyles } from './colours.js';
 
 const paintbrush = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6 4 4 3-5a2.1 2.1 0 0 0-3-3Z"/><path d="m14 6-5 5 4 4 5-5"/><path d="M9 11c-4-1-3 5-7 6 3 4 10 3 11-2"/></svg>';
 
@@ -26,7 +26,8 @@ export default {
 
     function transparency() {
       const value = picker.draftOpacity ?? opacityAdjustments[picker.task.id] ?? 0;
-      const label = value === 0 ? 'Theme default' : `${Math.abs(value)}% towards ${value < 0 ? 'transparent' : 'opaque'}`;
+      const percentage = Math.round(Math.abs(opacityEffect(value)) * 10000) / 100;
+      const label = value === 0 ? 'Theme default' : `${percentage}% towards ${value < 0 ? 'transparent' : 'opaque'}`;
       picker.slider.value = String(value);
       picker.slider.setAttribute('aria-valuetext', label);
       picker.slider.disabled = Boolean(pending);
@@ -210,7 +211,7 @@ export default {
       }
       const help = doc.createElement('p');
       help.id = 'hues-transparency-help';
-      help.textContent = 'Relative to the current theme. Centre uses its default.';
+      help.textContent = 'Centre uses the theme default. Changes are gentler near the centre.';
       opacity.append(opacityHead, slider, ends, help);
       const reset = doc.createElement('button');
       reset.type = 'button';
