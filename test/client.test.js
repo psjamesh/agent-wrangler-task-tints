@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
 import client from '../public/client.js';
 
-function fixture(t, colours = {}) {
+function fixture(t, colours = {}, opacityAdjustments = {}) {
   const dom = new JSDOM('<div id="grid"><div class="task-cell" data-taskid="t_release"><div class="task-head"><button class="task-actions-btn">Actions</button></div><div class="task-body-ext"><div id="host"></div></div></div><button class="switcher-pill" data-taskid="t_other">Other</button></div>', { pretendToBeVisual: true });
   const previous = globalThis.document;
   globalThis.document = dom.window.document;
@@ -17,7 +17,7 @@ function fixture(t, colours = {}) {
   const body = contributions.get('task.body');
   const host = document.getElementById('host');
   const ctx = { taskId: 't_release', adhocId: 'adhoc', container: host.parentElement };
-  const graph = { hues: { colours } };
+  const graph = { hues: { colours, opacityAdjustments } };
   body.mount(host, api, ctx);
   body.update(host, ctx, graph);
   const open = (currentGraph = graph) => contributions.get('task.action').items({ id: 't_release', name: 'Release', adhoc: false }, currentGraph, api)[0].run();
@@ -132,4 +132,96 @@ test('removing the edited task closes its picker while keeping other task tints'
   await Promise.resolve();
   assert.equal(f.document.querySelector('.hues-picker'), null);
   assert.ok(f.document.querySelector('style[data-hues]').textContent.includes('t_other'));
+});
+
+test('transparency previews while dragging, saves on release and keeps the picker open', t => {
+  const f = fixture(t, { t_release: '#ff0000' });
+  f.open();
+  const slider = f.document.querySelector('input[type="range"]');
+  assert.ok(slider);
+  assert.equal(slider.value, '0');
+  slider.value = '-50';
+  slider.dispatchEvent(new f.window.Event('input', { bubbles: true }));
+  assert.deepEqual(f.frames, []);
+  assert.ok(f.document.querySelector('style[data-hues]').textContent.includes('calc(alpha * 0.5)'));
+  assert.match(slider.getAttribute('aria-valuetext'), /transparent/);
+  slider.dispatchEvent(new f.window.Event('change', { bubbles: true }));
+  assert.deepEqual(f.frames[0], { type: 'hues-opacity-set', requestId: f.frames[0].requestId, taskId: 't_release', adjustment: -50 });
+  assert.equal(slider.disabled, true);
+  f.body.update(f.host, f.ctx, { hues: { colours: { t_release: '#ff0000' }, opacityAdjustments: { t_release: -50 } } });
+  f.message({ kind: 'saved', requestId: f.frames[0].requestId, ok: true });
+  assert.ok(f.document.querySelector('.hues-picker'));
+  assert.equal(slider.disabled, false);
+  assert.equal(slider.value, '-50');
+  assert.equal(f.document.querySelector('[data-colour="#ff0000"]').getAttribute('aria-pressed'), 'true');
+  f.document.querySelector('[data-colour="#0000ff"]').click();
+  assert.equal(f.frames.at(-1).colour, '#0000ff');
+});
+
+test('opacity-only tasks can reset, and cancelling an unsaved preview restores the graph', t => {
+  const f = fixture(t, {}, { t_release: 25 });
+  f.open();
+  assert.equal(f.document.querySelector('.hues-reset').disabled, false);
+  const confirmed = f.document.querySelector('style[data-hues]').textContent;
+  const slider = f.document.querySelector('input[type="range"]');
+  assert.equal(slider.value, '25');
+  slider.value = '-100';
+  slider.dispatchEvent(new f.window.Event('input', { bubbles: true }));
+  assert.notEqual(f.document.querySelector('style[data-hues]').textContent, confirmed);
+  f.document.querySelector('.hues-picker').dispatchEvent(new f.window.Event('cancel', { cancelable: true }));
+  assert.equal(f.document.querySelector('style[data-hues]').textContent, confirmed);
+  assert.deepEqual(f.frames, []);
+  f.open();
+  f.document.querySelector('.hues-reset').click();
+  assert.equal(f.frames[0].colour, null);
+  f.body.update(f.host, f.ctx, { hues: { colours: {}, opacityAdjustments: {} } });
+  f.message({ kind: 'saved', requestId: f.frames[0].requestId, ok: true });
+  assert.equal(f.document.querySelector('style[data-hues]').textContent, '');
+});
+
+test('failed transparency saves discard the preview and show the last confirmed adjustment', t => {
+  const f = fixture(t, { t_release: '#ff0000' }, { t_release: -25 });
+  f.open();
+  const confirmed = f.document.querySelector('style[data-hues]').textContent;
+  const slider = f.document.querySelector('input[type="range"]');
+  slider.value = '50';
+  slider.dispatchEvent(new f.window.Event('input', { bubbles: true }));
+  slider.dispatchEvent(new f.window.Event('change', { bubbles: true }));
+  f.message({ kind: 'saved', requestId: f.frames[0].requestId, ok: false, error: 'Disk full' });
+  assert.equal(f.document.querySelector('style[data-hues]').textContent, confirmed);
+  assert.equal(slider.value, '-25');
+  assert.equal(slider.disabled, false);
+  assert.equal(f.document.querySelector('[role="alert"]').textContent, 'Disk full');
+});
+
+test('a delayed transparency acknowledgement cannot replace a newer graph adjustment', t => {
+  const f = fixture(t, { t_release: '#ff0000' });
+  f.open();
+  const slider = f.document.querySelector('input[type="range"]');
+  slider.value = '-50';
+  slider.dispatchEvent(new f.window.Event('input', { bubbles: true }));
+  slider.dispatchEvent(new f.window.Event('change', { bubbles: true }));
+  f.body.update(f.host, f.ctx, { hues: { colours: { t_release: '#0000ff' }, opacityAdjustments: { t_release: 75 } } });
+  f.message({ kind: 'saved', requestId: f.frames[0].requestId, adjustment: -50, ok: true });
+  assert.equal(slider.value, '75');
+  assert.ok(f.document.querySelector('style[data-hues]').textContent.includes('(1 - alpha) * 0.75'));
+  assert.equal(f.document.querySelector('[data-colour="#0000ff"]').getAttribute('aria-pressed'), 'true');
+});
+
+test('transparency saves restore keyboard focus unless the user moves to another control', t => {
+  const f = fixture(t);
+  f.open();
+  const slider = f.document.querySelector('input[type="range"]');
+  for (const [value, ok, moveFocus] of [[-25, true, false], [-50, false, false], [-75, true, true]]) {
+    slider.focus();
+    slider.value = String(value);
+    slider.dispatchEvent(new f.window.Event('input'));
+    slider.dispatchEvent(new f.window.Event('change'));
+    const close = f.document.querySelector('.hues-close');
+    close.focus();
+    close.blur();
+    if (moveFocus) close.focus();
+    f.message({ kind: 'saved', requestId: f.frames.at(-1).requestId, ok });
+    assert.equal(f.document.activeElement, moveFocus ? close : slider);
+  }
 });

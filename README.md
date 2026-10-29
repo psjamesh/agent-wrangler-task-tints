@@ -2,7 +2,7 @@
 
 Background colours for tasks in [Agent Wrangler](https://github.com/psjamesh/agent-wrangler).
 
-Give each task a hue from a hexagonal colour wheel. Its task-view tile and minimised pill keep that hue, blended with your current theme. The tint preserves the surface's transparency; theme backgrounds, images and blur continue to show through.
+Give each task a hue from a hexagonal colour wheel. Its task-view tile and minimised pill keep that hue, blended with your current theme. Keep the theme's transparency or adjust it towards transparent or opaque. Theme backgrounds, images and blur continue to show through.
 
 ## Install
 
@@ -20,17 +20,22 @@ Review the extension and install it. There are no runtime dependencies.
 
 1. Open a task's **⋮** menu or right-click its tile, then choose **Colour…**.
 2. Pick a hexagon on the wheel. The colour saves immediately.
-3. Choose **Reset** to restore that task's current theme colour.
+3. Reopen **Colour…** to adjust **Transparency**. Drag to preview; releasing saves and keeps the picker open. The centre uses **Theme default**.
+4. Choose **Reset** to restore that task's current theme colour and transparency.
 
 Use the arrow keys to move around the wheel, Enter or Space to choose, and Escape to close it. Unassigned supports **Colour…** through its right-click menu. Restore a minimised task to change its colour.
 
-Colours are shared across browsers connected to the same installation. They survive refreshes, restarts, renaming and archiving. Deleting a task removes its saved colour. Turning the extension off keeps saved colours and restores ordinary theme surfaces; turning it on restores the tints.
+Transparency can also be adjusted without choosing a hue. Picking another hue keeps the task's transparency adjustment.
+
+Colours and transparency adjustments are shared across browsers connected to the same installation. They survive refreshes, restarts, renaming and archiving. Deleting a task removes its saved choices. Turning the extension off keeps those choices and restores ordinary theme surfaces; turning it on restores the tints.
 
 The extension tints task tiles and Agent Wrangler's standard minimised pills. Extensions that replace the tray control their own appearance. Session cards, status indicators, terminals and chat keep their own colours.
 
 ## Theme compatibility
 
-The tint changes the RGB channels of the theme's `--tile-bg` and `--pill-idle-bg` colours and keeps their original alpha using [relative CSS colours](https://www.w3.org/TR/css-color-5/#relative-RGB). A 50% opaque surface stays 50% opaque, and a fully transparent surface stays fully transparent. Background images, borders, drag indicators and backdrop filters remain owned by the theme and host.
+The tint changes the RGB channels of the theme's `--tile-bg` and `--pill-idle-bg` colours using [relative CSS colours](https://www.w3.org/TR/css-color-5/#relative-RGB). At **Theme default**, each surface keeps its original alpha exactly, including fully transparent surfaces.
+
+The transparency slider saves an adjustment relative to each surface's theme opacity. Halfway towards transparent halves it: 50% opaque becomes 25%, while 80% becomes 40%. Halfway towards opaque moves halfway to full opacity: 50% becomes 75%, while 80% becomes 90%. Switching themes recomputes the result from that theme's defaults, independently for tiles and pills. Background images, borders, drag indicators and backdrop filters remain owned by the theme and host.
 
 State lives in `hues.json` inside `AW_DATA_DIR`, defaulting to `~/.agent-wrangler/hues.json`. Writes replace the state file atomically. The extension requests task read access and board rebuild/broadcast capabilities; it does not modify core task data.
 

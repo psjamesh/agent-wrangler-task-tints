@@ -54,3 +54,26 @@ test('the same saved hue blends with the current theme RGB when theme variables 
     assert.equal(actual[3], expected[3]);
   }
 });
+
+test('relative opacity adjusts each current theme surface toward transparent or opaque', () => {
+  for (const [alpha, adjustment, expected] of [[0.5, -50, 0.25], [0.8, -50, 0.4], [0.5, 50, 0.75], [0.8, 50, 0.9], [0, -50, 0], [0, 50, 0.5], [1, -50, 0.5], [1, 50, 1], [0.42, -100, 0], [0.42, 100, 1]]) {
+    const expressions = [...taskStyles({ t_release: '#ff0000' }, 'adhoc', { t_release: adjustment }).matchAll(/background-color:([^}]+)/g)].map(match => match[1]);
+    for (const expression of expressions) {
+      const result = convert.colorToRgb(expression, { customProperty: { '--tile-bg': `rgba(20,30,40,${alpha})`, '--pill-idle-bg': `rgba(60,70,80,${alpha})` } });
+      assert.ok(Math.abs(result[3] - expected) < 0.00001, `${alpha} with ${adjustment}: ${result[3]} instead of ${expected}`);
+    }
+  }
+});
+
+test('opacity can change independently while retaining theme RGB', () => {
+  const css = taskStyles({}, 'adhoc', { t_release: -50 });
+  const expression = css.match(/background-color:([^}]+)/)?.[1];
+  assert.ok(expression);
+  const result = convert.colorToRgb(expression, { customProperty: { '--tile-bg': 'rgba(20,30,40,0.8)' } });
+  for (let channel = 0; channel < 3; channel++) assert.ok(Math.abs(result[channel] - [20, 30, 40][channel]) < 0.003);
+  assert.equal(result[3], 0.4);
+});
+
+test('invalid opacity-only input cannot reach the stylesheet', () => {
+  for (const adjustment of [101, -101, NaN, Infinity, '0);color:red']) assert.equal(taskStyles({}, 'adhoc', { t_release: adjustment }), '');
+});

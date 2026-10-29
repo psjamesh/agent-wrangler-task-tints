@@ -5,7 +5,7 @@ let graph = await (await fetch('/state')).json();
 let minimised = false;
 let enabled = true;
 const tasks = [{ id: 't_release', name: 'Release prep' }, { id: 't_research', name: 'Research' }];
-const slots = createSlots({ document, handlerTypesFor: () => ['hues-set'], version: '1.53.0' });
+const slots = createSlots({ document, handlerTypesFor: () => ['hues-set', 'hues-opacity-set'], version: '1.53.0' });
 const api = { send: async frame => {
   const response = await fetch('/control', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(frame) });
   const result = await response.json();
@@ -30,7 +30,8 @@ function open(task, event) {
   for (const item of slots.taskMenuItems({ ...task, adhoc: false }, graph, api)) {
     const button = document.createElement('button');
     button.className = 'context-menu-item';
-    button.textContent = item.label;
+    button.innerHTML = item.icon;
+    button.append(document.createTextNode(item.label));
     button.onclick = () => { menu.remove(); item.run(); };
     menu.append(button);
   }

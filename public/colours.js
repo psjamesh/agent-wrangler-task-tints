@@ -34,18 +34,28 @@ export function neighbour(cells, index, key) {
 const validId = /^[a-zA-Z0-9_-]{1,120}$/;
 const validColour = /^#[0-9a-f]{6}$/i;
 
-function tint(source, colour) {
-  const [r, g, b] = [1, 3, 5].map(offset => parseInt(colour.slice(offset, offset + 2), 16));
-  return `rgb(from var(${source}) calc(r * 0.82 + ${r} * 0.18) calc(g * 0.82 + ${g} * 0.18) calc(b * 0.82 + ${b} * 0.18) / alpha)`;
+function tint(source, colour, adjustment) {
+  let channels = 'r g b';
+  if (colour) {
+    const [r, g, b] = [1, 3, 5].map(offset => parseInt(colour.slice(offset, offset + 2), 16));
+    channels = `calc(r * 0.82 + ${r} * 0.18) calc(g * 0.82 + ${g} * 0.18) calc(b * 0.82 + ${b} * 0.18)`;
+  }
+  const alpha = adjustment < 0 ? `calc(alpha * ${(100 + adjustment) / 100})`
+    : adjustment > 0 ? `calc(alpha + (1 - alpha) * ${adjustment / 100})` : 'alpha';
+  return `rgb(from var(${source}) ${channels} / ${alpha})`;
 }
 
-export function taskStyles(colours = {}, adhocId = 'adhoc') {
-  return Object.entries(colours).flatMap(([taskId, colour]) => {
-    if (!validId.test(taskId) || typeof colour !== 'string' || !validColour.test(colour)) return [];
+export function taskStyles(colours = {}, adhocId = 'adhoc', opacityAdjustments = {}) {
+  return [...new Set([...Object.keys(colours), ...Object.keys(opacityAdjustments)])].flatMap(taskId => {
+    if (!validId.test(taskId)) return [];
+    const colour = typeof colours[taskId] === 'string' && validColour.test(colours[taskId]) ? colours[taskId] : undefined;
+    const value = opacityAdjustments[taskId];
+    const adjustment = Number.isInteger(value) && value >= -100 && value <= 100 ? value : 0;
+    if (!colour && !adjustment) return [];
     const tile = taskId === adhocId ? '.task-cell.no-task' : `.task-cell[data-taskid="${taskId}"]`;
     return [
-      `#grid ${tile}:not(.drop-target){background-color:${tint('--tile-bg', colour)}}`,
-      `#grid .switcher-pill[data-taskid="${taskId}"]{background-color:${tint('--pill-idle-bg', colour)}}`,
+      `#grid ${tile}:not(.drop-target){background-color:${tint('--tile-bg', colour, adjustment)}}`,
+      `#grid .switcher-pill[data-taskid="${taskId}"]{background-color:${tint('--pill-idle-bg', colour, adjustment)}}`,
     ];
   }).join('\n');
 }

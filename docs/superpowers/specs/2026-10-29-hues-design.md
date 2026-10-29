@@ -1,6 +1,6 @@
 # Task Tints
 
-Status: task menu entry, hexagonal colour wheel, Reset and transparency requirements settled with the human.
+Status: task menu entry, hexagonal colour wheel, Reset and theme-relative transparency control implemented.
 
 ## Purpose
 
@@ -12,12 +12,13 @@ The repository is `https://github.com/psjamesh/agent-wrangler-task-tints`. The e
 
 - Choose a background colour for an individual task in task view.
 - Show the same hue when that task is minimised.
+- Adjust task transparency relative to each surface's current theme default.
 - Decide the picker appearance and entry point as part of this design.
 - Create the repository in the `psjamesh` namespace.
 
 ## Interaction
 
-Add **Colour…** to the existing task header `⋮` menu and the task's right-click menu. Use the existing `task.action` extension slot, rather than adding a permanent button to every task. The Unassigned tile receives the action through its existing right-click menu; core does not expose extension actions in its header menu.
+Add **Colour…**, with a monochrome paintbrush icon, to the existing task header `⋮` menu and the task's right-click menu. Use the existing `task.action` extension slot. The Unassigned tile receives the action through its existing right-click menu; core does not expose extension actions in its header menu.
 
 Open a small labelled picker beside the task header. Its title is **Task colour**, with the task name below it. Clamp it inside the viewport and use a compact dialog presentation on a small screen. The user specified a colour wheel made from hexagonal sections and a Reset button.
 
@@ -25,27 +26,30 @@ The picker contains:
 
 - A honeycomb colour wheel: hue varies around its centre and saturation increases towards the outside. The centre is neutral. The builder chooses the density to keep the picker compact and usable.
 - A visible check on the current choice and accessible colour descriptions. Arrow keys navigate the sections and Enter/Space selects one.
-- **Reset**, removing the task's saved colour and restoring the current theme surface.
+- A transparency slider centred on **Theme default**, with **More transparent** and **More opaque** ends. Dragging previews locally; releasing saves and keeps the picker open. It works without a selected hue.
+- **Reset**, removing the task's saved colour and transparency adjustment and restoring the current theme surface.
 
-A section click applies and saves its colour immediately, then closes the picker. Escape or an outside click closes without changing the saved colour. Return focus to the triggering task menu button when possible. There is no native colour dialog or separate custom-colour flow.
+A section click applies and saves its colour immediately, preserves any transparency adjustment, then closes the picker. Escape or an outside click closes and discards any unsaved slider preview. Return focus to the triggering task menu button when possible. There is no native colour dialog or separate custom-colour flow.
 
 There is no Save button. A save failure retains the last confirmed colour and displays a short error; closing the picker must not turn a failed write into an apparent success. A minimised task can be restored and recoloured through the same task menu.
 
 ## Appearance
 
-Store one RGB seed per task, not a literal theme-specific background. Tint the existing theme's task surface and minimised-pill surface with that seed (initial builder choice: 18% colour). Preserve each surface's original alpha exactly. An ordinary mix with an opaque colour increases opacity and does not satisfy this requirement. Relative CSS colour channels are a suitable implementation: alter RGB while retaining the source `alpha`. Do not replace the theme or add a new opaque background layer. Fully transparent surfaces remain fully transparent.
+Store an optional RGB seed and relative opacity adjustment per task. Tint the existing theme's task surface and minimised-pill surface with 18% of that seed. At the slider's default, preserve each surface's original alpha exactly. Relative CSS colour channels alter RGB while retaining the source `alpha`; do not add an opaque background layer.
 
-Changing the theme recomputes the appearance from the same seed, preserving the new theme's alpha, background images and backdrop filters. Text, borders, session cards, session status dots and status bars keep their theme colours and core's focus, drag and restore indicators. Task names remain visible in both representations; colour is an additional cue.
+Save the slider as an integer adjustment from -100 to 100. For negative adjustments, multiply the theme alpha by `1 + adjustment / 100`. For positive adjustments, use `alpha + (1 - alpha) * adjustment / 100`. Zero leaves alpha unchanged. Apply the calculation independently to the tile and pill defaults. A task with only a transparency adjustment retains the theme RGB channels.
 
-Terminal backgrounds, terminal text, chat backgrounds, the global board background and task ordering are outside this version. There are no colour categories, automatic colour assignment, intensity controls or global palette settings.
+Changing the theme recomputes the appearance from the same seed and adjustment using the new theme's defaults, background images and backdrop filters. Text, borders, session cards, session status dots and status bars keep their theme colours and core's focus, drag and restore indicators. Task names remain visible in both representations; colour is an additional cue.
+
+Terminal backgrounds, terminal text, chat backgrounds, the global board background and task ordering are outside this version. There are no colour categories, automatic colour assignment, tint-strength controls or global palette settings.
 
 ## Storage and synchronisation
 
 Colours belong to the task on this Agent Wrangler installation. They survive browser refreshes, minimising/restoring, task renaming and server restarts, and are shared across browsers connected to that installation.
 
-Keep extension-owned state in `<AW_DATA_DIR>/hues.json`, respecting Agent Wrangler's default data-directory behaviour. Save atomically and update in-memory state only after a successful write. Validate task ids against the host's task projection and accept only canonical six-digit hexadecimal RGB values or an explicit reset. An action changes one task's colour, so simultaneous changes to different tasks do not overwrite one another; the last successful write wins for a single task.
+Keep extension-owned state in `<AW_DATA_DIR>/hues.json`, respecting Agent Wrangler's default data-directory behaviour. Save atomically and update in-memory state only after a successful write. Validate task ids against the host's task projection and accept only canonical six-digit hexadecimal RGB values, a relative opacity integer from -100 to 100, or an explicit reset. Each control changes only its own field for one task, preserving other tasks and fields. Reset clears both fields. Version 2 stores both maps and reads version 1 colour-only state with default transparency.
 
-Expose the colour map in the extension's graph contribution. A control handler saves a task colour, requests a graph rebuild and acknowledges the originating request. Other connected boards receive the updated graph. The graph is authoritative: an acknowledgement only finishes the pending request and never overwrites a newer graph colour. Include a request id so acknowledgements and errors cannot affect a different pending edit.
+Expose the colour and opacity-adjustment maps in the extension's graph contribution. A control handler saves one field, requests a graph rebuild and acknowledges the originating request. Other connected boards receive the updated graph. The graph is authoritative: an acknowledgement only finishes the pending request and never overwrites newer graph state. Include a request id so acknowledgements and errors cannot affect a different pending edit. A failed transparency save discards its preview and displays the latest confirmed graph state.
 
 Keep archived tasks' colours so restoring a task preserves its colour. Remove a task's entry when that task is deleted, using `onTaskDelete`. Reconcile stored ids against all existing tasks when contributing the graph, covering deletion while disabled without losing archived colours. Disabling Task Tints restores normal theme surfaces and removes its picker and menu actions while retaining saved colours. Re-enabling restores them.
 
@@ -66,7 +70,7 @@ The builder may choose the module layout, exact palette values, animation and ti
 - Verify refresh/restart persistence, rename, minimising/restoring, archive/restore and delete cleanup.
 - Exercise the actual host's extension loader, task menu and `task.body` lifecycle where practical.
 - Check hexagonal-section selection, Reset, Escape, outside-click dismissal, arrow-key navigation, keyboard focus and save errors.
-- Verify tile and minimised-pill appearance in dark, light and translucent themes, including exact alpha preservation, readable labels and unchanged session status indicators.
+- Verify tile and minimised-pill appearance in dark, light and translucent themes, including exact default alpha preservation, relative adjustments, theme changes, readable labels and unchanged session status indicators.
 - Disable/re-enable Task Tints and confirm its menu, picker and styling are removed/restored cleanly.
 
 ## Visual reference

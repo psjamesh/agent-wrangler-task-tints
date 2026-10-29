@@ -21,6 +21,7 @@ function fixture(t) {
 }
 
 const save = (msg, host) => manifest.handlers.find(h => h.type === 'hues-set').handler(msg, host);
+const saveOpacity = (msg, host) => manifest.handlers.find(h => h.type === 'hues-opacity-set').handler(msg, host);
 
 test('install-time and runtime manifests disclose the same extension', () => {
   const { wranglerExtension: declared } = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url)));
@@ -30,7 +31,7 @@ test('install-time and runtime manifests disclose the same extension', () => {
 test('a live task colour is persisted, rebuilt and acknowledged to the originating request', async t => {
   const { host, frames, rebuilds } = fixture(t);
   await save({ requestId: 'request-1', taskId: 't_release', colour: '#00AAFF' }, host);
-  assert.deepEqual(manifest.graph({ host }), { hues: { colours: { t_release: '#00aaff' } } });
+  assert.deepEqual(manifest.graph({ host }), { hues: { colours: { t_release: '#00aaff' }, opacityAdjustments: {} } });
   assert.equal(rebuilds(), 1);
   assert.deepEqual(frames, [{ kind: 'saved', requestId: 'request-1', taskId: 't_release', colour: '#00aaff', ok: true }]);
 });
@@ -48,7 +49,7 @@ test('Unassigned can be coloured and Reset removes its colour', async t => {
   const { host, frames } = fixture(t);
   await save({ requestId: 'one', taskId: 'adhoc', colour: '#ff0000' }, host);
   await save({ requestId: 'two', taskId: 'adhoc', colour: null }, host);
-  assert.deepEqual(manifest.graph({ host }), { hues: { colours: {} } });
+  assert.deepEqual(manifest.graph({ host }), { hues: { colours: {}, opacityAdjustments: {} } });
   assert.equal(frames.at(-1).ok, true);
 });
 
@@ -79,4 +80,26 @@ test('failed cleanup cannot prevent board graph generation or lose confirmed col
   fs.writeFileSync(directory, 'not a directory');
   assert.deepEqual(manifest.graph({ host }).hues.colours, { t_deleted: '#ff0000', t_release: '#0000ff' });
   assert.deepEqual(store.snapshot().colours, { t_deleted: '#ff0000', t_release: '#0000ff' });
+});
+
+test('opacity controls persist independently, rebuild the graph and acknowledge the request', async t => {
+  const { host, frames, rebuilds } = fixture(t);
+  await save({ requestId: 'colour', taskId: 't_release', colour: '#ff0000' }, host);
+  await saveOpacity({ requestId: 'opacity', taskId: 't_release', adjustment: -50 }, host);
+  await saveOpacity({ requestId: 'adhoc-opacity', taskId: 'adhoc', adjustment: 25 }, host);
+  assert.deepEqual(manifest.graph({ host }).hues, { colours: { t_release: '#ff0000' }, opacityAdjustments: { t_release: -50, adhoc: 25 } });
+  assert.equal(rebuilds(), 3);
+  assert.deepEqual(frames.at(-1), { kind: 'saved', requestId: 'adhoc-opacity', taskId: 'adhoc', adjustment: 25, ok: true });
+  await save({ requestId: 'reset', taskId: 't_release', colour: null }, host);
+  assert.deepEqual(manifest.graph({ host }).hues, { colours: {}, opacityAdjustments: { adhoc: 25 } });
+});
+
+test('opacity controls reject unknown tasks and invalid values without rebuilding', async t => {
+  const { host, frames, rebuilds } = fixture(t);
+  for (const taskId of ['unknown', 't_archived']) await saveOpacity({ requestId: taskId, taskId, adjustment: -50 }, host);
+  await saveOpacity({ requestId: 'invalid', taskId: 't_release', adjustment: 101 }, host);
+  assert.equal(frames.length, 3);
+  assert.ok(frames.every(frame => frame.ok === false));
+  assert.equal(rebuilds(), 0);
+  assert.deepEqual(host.stores.hues.snapshot(), { colours: {}, opacityAdjustments: {} });
 });

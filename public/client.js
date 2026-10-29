@@ -1,5 +1,7 @@
 import { colourWheel, neighbour, taskStyles } from './colours.js';
 
+const paintbrush = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6 4 4 3-5a2.1 2.1 0 0 0-3-3Z"/><path d="m14 6-5 5 4 4 5-5"/><path d="M9 11c-4-1-3 5-7 6 3 4 10 3 11-2"/></svg>';
+
 export default {
   register(slots) {
     const doc = globalThis.document;
@@ -10,14 +12,26 @@ export default {
     const sheet = doc.createElement('style');
     sheet.dataset.hues = '';
     let colours = {};
+    let opacityAdjustments = {};
     let adhocId = 'adhoc';
     let lastGraph;
     let picker;
     let pending;
 
     function renderStyles() {
-      const css = taskStyles(colours, adhocId);
+      const adjustments = picker?.draftOpacity === undefined ? opacityAdjustments : { ...opacityAdjustments, [picker.task.id]: picker.draftOpacity };
+      const css = taskStyles(colours, adhocId, adjustments);
       if (sheet.textContent !== css) sheet.textContent = css;
+    }
+
+    function transparency() {
+      const value = picker.draftOpacity ?? opacityAdjustments[picker.task.id] ?? 0;
+      const label = value === 0 ? 'Theme default' : `${Math.abs(value)}% towards ${value < 0 ? 'transparent' : 'opaque'}`;
+      picker.slider.value = String(value);
+      picker.slider.setAttribute('aria-valuetext', label);
+      picker.slider.disabled = Boolean(pending);
+      picker.output.textContent = label;
+      picker.reset.disabled = Boolean(pending) || (!colours[picker.task.id] && value === 0);
     }
 
     function selection() {
@@ -29,13 +43,14 @@ export default {
         button.querySelector('span').textContent = selected ? '✓' : '';
         button.disabled = Boolean(pending);
       }
-      picker.reset.disabled = Boolean(pending) || !saved;
+      transparency();
     }
 
     function receiveGraph(graph) {
       if (!graph || graph === lastGraph) return;
       lastGraph = graph;
       colours = { ...(graph.hues?.colours || {}) };
+      opacityAdjustments = { ...(graph.hues?.opacityAdjustments || {}) };
       renderStyles();
       selection();
     }
@@ -62,28 +77,37 @@ export default {
       picker = undefined;
       if (pending) win.clearTimeout(pending.timer);
       pending = undefined;
+      renderStyles();
       win.removeEventListener('resize', position);
       (anchor?.isConnected ? anchor : taskButton(task))?.focus();
     }
 
-    function failed(message) {
-      if (!picker) return;
+    function finishSave() {
+      const focusSlider = pending?.focusSlider;
       if (pending) win.clearTimeout(pending.timer);
       pending = undefined;
-      picker.status.setAttribute('role', 'alert');
-      picker.status.textContent = message;
+      picker.draftOpacity = undefined;
+      renderStyles();
       selection();
+      if (focusSlider && (doc.activeElement === doc.body || doc.activeElement === picker.slider)) picker.slider.focus();
     }
 
-    function save(colour) {
+    function failed(message) {
+      if (!picker) return;
+      finishSave();
+      picker.status.setAttribute('role', 'alert');
+      picker.status.textContent = message;
+    }
+
+    function save(type, fields, closeAfter = true) {
       if (!picker || pending) return;
       const requestId = `hues-${win.crypto.randomUUID()}`;
-      pending = { requestId, taskId: picker.task.id, colour, timer: win.setTimeout(() => failed('Could not confirm the save. Try again when connected.'), 10000) };
+      pending = { requestId, closeAfter, focusSlider: doc.activeElement === picker.slider, timer: win.setTimeout(() => failed('Could not confirm the save. Try again when connected.'), 10000) };
       picker.status.setAttribute('role', 'status');
       picker.status.textContent = 'Saving…';
       selection();
-      try { api.send({ type: 'hues-set', requestId, taskId: picker.task.id, colour }); }
-      catch { failed('Could not save the task colour.'); }
+      try { api.send({ type, requestId, taskId: picker.task.id, ...fields }); }
+      catch { failed('Could not save the task appearance.'); }
     }
 
     function openPicker(task) {
@@ -127,11 +151,11 @@ export default {
         button.setAttribute('aria-label', button.title);
         button.tabIndex = index === focusIndex ? 0 : -1;
         button.append(doc.createElement('span'));
-        button.addEventListener('click', () => save(cell.colour));
+        button.addEventListener('click', () => save('hues-set', { colour: cell.colour }));
         button.addEventListener('keydown', event => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            save(cell.colour);
+            save('hues-set', { colour: cell.colour });
           } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home'].includes(event.key)) {
             event.preventDefault();
             const next = neighbour(cells, index, event.key);
@@ -143,17 +167,62 @@ export default {
         wheel.append(button);
         return button;
       });
+      const opacity = doc.createElement('div');
+      opacity.className = 'hues-transparency';
+      const opacityHead = doc.createElement('div');
+      opacityHead.className = 'hues-transparency-head';
+      const label = doc.createElement('label');
+      label.htmlFor = 'hues-transparency';
+      label.textContent = 'Transparency';
+      const output = doc.createElement('output');
+      output.htmlFor = 'hues-transparency';
+      opacityHead.append(label, output);
+      const slider = doc.createElement('input');
+      slider.type = 'range';
+      slider.id = 'hues-transparency';
+      slider.min = '-100';
+      slider.max = '100';
+      slider.step = '1';
+      slider.setAttribute('aria-describedby', 'hues-transparency-help');
+      slider.addEventListener('input', () => {
+        if (pending) return;
+        picker.draftOpacity = Number(slider.value);
+        renderStyles();
+        transparency();
+      });
+      slider.addEventListener('change', () => {
+        if (pending) return;
+        const adjustment = Number(slider.value);
+        if (adjustment === (opacityAdjustments[task.id] ?? 0)) {
+          picker.draftOpacity = undefined;
+          renderStyles();
+          return;
+        }
+        picker.draftOpacity = adjustment;
+        save('hues-opacity-set', { adjustment }, false);
+      });
+      const ends = doc.createElement('div');
+      ends.className = 'hues-transparency-ends';
+      for (const text of ['More transparent', 'More opaque']) {
+        const end = doc.createElement('span');
+        end.textContent = text;
+        ends.append(end);
+      }
+      const help = doc.createElement('p');
+      help.id = 'hues-transparency-help';
+      help.textContent = 'Relative to the current theme. Centre uses its default.';
+      opacity.append(opacityHead, slider, ends, help);
       const reset = doc.createElement('button');
       reset.type = 'button';
       reset.className = 'hues-reset';
       reset.textContent = 'Reset';
-      reset.title = 'Use the current theme’s colour';
-      reset.addEventListener('click', () => save(null));
+      reset.title = 'Use the current theme’s colour and transparency';
+      reset.addEventListener('click', () => save('hues-set', { colour: null }));
       const status = doc.createElement('p');
       status.className = 'hues-status';
       status.setAttribute('role', 'status');
-      el.append(header, name, wheel, reset, status);
-      picker = { el, task, anchor, buttons, reset, status };
+      el.append(header, name, wheel, opacity, reset, status);
+      picker = { el, task, anchor, buttons, slider, output, reset, status };
       el.addEventListener('cancel', event => { event.preventDefault(); closePicker(); });
       el.addEventListener('click', event => {
         if (event.target !== el) return;
@@ -171,15 +240,17 @@ export default {
 
     api.onMessage(frame => {
       if (frame.kind !== 'saved' || !pending || frame.requestId !== pending.requestId) return;
-      if (!frame.ok) { failed(typeof frame.error === 'string' ? frame.error : 'Could not save the task colour.'); return; }
-      closePicker();
+      if (!frame.ok) { failed(typeof frame.error === 'string' ? frame.error : 'Could not save the task appearance.'); return; }
+      if (pending.closeAfter) { closePicker(); return; }
+      finishSave();
+      picker.status.textContent = '';
     });
 
     slots.register('task.action', {
       id: 'colour',
       items(task, graph) {
         receiveGraph(graph);
-        return [{ label: 'Colour…', run: () => openPicker(task) }];
+        return [{ label: 'Colour…', icon: paintbrush, run: () => openPicker(task) }];
       },
     });
     slots.register('task.body', {

@@ -33,7 +33,10 @@ const server = http.createServer(async (request, response) => {
       }
       const frames = [];
       const host = { ...baseHost, rebuild: async () => {}, broadcast: frame => frames.push({ type: 'ext:hues', ...frame }) };
-      await manifest.handlers[0].handler(JSON.parse(body), host);
+      const message = JSON.parse(body);
+      const handler = manifest.handlers.find(entry => entry.type === message.type);
+      if (!handler) throw Error('Unknown control');
+      await handler.handler(message, host);
       response.setHeader('Content-Type', 'application/json');
       response.end(JSON.stringify({ graph: manifest.graph({ host }), frames }));
       return;

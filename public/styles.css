@@ -48,6 +48,14 @@
 .hues-swatch:hover,
 .hues-swatch:focus-visible { z-index: 1; outline: 2px solid var(--hues-check); outline-offset: -4px; filter: brightness(1.08); }
 .hues-swatch:disabled { cursor: wait; }
+.hues-transparency { margin: 0 0 14px; }
+.hues-transparency-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; align-items: baseline; }
+.hues-transparency label { font-weight: 600; }
+.hues-transparency output { color: var(--fg-muted); font-size: 11px; }
+.hues-transparency input { display: block; width: 100%; margin: 10px 0 4px; accent-color: var(--accent); cursor: pointer; }
+.hues-transparency input:disabled { cursor: wait; }
+.hues-transparency-ends { display: flex; justify-content: space-between; gap: 8px; color: var(--fg-muted); font-size: 11px; }
+.hues-transparency p { margin: 8px 0 0; color: var(--fg-muted); font-size: 11px; line-height: 1.4; }
 .hues-reset {
   width: 100%;
   padding: 7px 12px;
