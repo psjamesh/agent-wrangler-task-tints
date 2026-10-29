@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { test } from 'node:test';
+import { JSDOM } from 'jsdom';
+
+test('the real host loader and task-body lifecycle support selection and unloading', { skip: !process.env.AW_SOURCE }, async t => {
+  const publicDir = path.join(process.env.AW_SOURCE, 'public');
+  const { createSlots } = await import(pathToFileURL(path.join(publicDir, 'slots.js')));
+  const { createClientExtensionLoader } = await import(pathToFileURL(path.join(publicDir, 'extensions.js')));
+  const { anyModalOpen } = await import(pathToFileURL(path.join(publicDir, 'util.js')));
+  const dom = new JSDOM('<div id="grid"><div class="task-cell" data-taskid="t_release"><button class="task-actions-btn">Actions</button><div id="body"></div></div></div>', { pretendToBeVisual: true });
+  const previous = globalThis.document;
+  globalThis.document = dom.window.document;
+  t.after(() => { globalThis.document = previous; dom.window.close(); });
+  const errors = [];
+  const frames = [];
+  const api = { send: frame => frames.push(frame) };
+  const slots = createSlots({ document: dom.window.document, handlerTypesFor: () => ['hues-set'], onError: (...args) => errors.push(args) });
+  const loader = createClientExtensionLoader(slots, { document: dom.window.document, api, importer: () => import('../public/client.js') });
+  await loader.load([{ id: 'hues', client: '/ext/hues/public/client.js', styles: '/ext/hues/public/styles.css' }]);
+  const host = dom.window.document.getElementById('body');
+  slots.syncHosts('task.body', [{ host, session: { taskId: 't_release', adhocId: 'adhoc', container: host } }], api, { hues: { colours: {} } });
+  const items = slots.taskMenuItems({ id: 't_release', name: 'Release', adhoc: false }, { hues: { colours: {} } }, api);
+  assert.equal(items[0].label, 'Colour…');
+  items[0].run();
+  assert.equal(anyModalOpen(dom.window.document), true, 'the host must suspend board shortcuts while the picker is open');
+  dom.window.document.querySelector('[data-colour="#ff0000"]').click();
+  assert.equal(frames[0]?.colour, '#ff0000');
+  slots.dispatchMessage({ type: 'ext:hues', kind: 'saved', requestId: frames[0].requestId, ok: true });
+  assert.equal(dom.window.document.querySelector('.hues-picker'), null);
+  loader.unload('hues');
+  await Promise.resolve();
+  assert.equal(dom.window.document.querySelector('style[data-hues]'), null);
+  assert.equal(dom.window.document.querySelector('link[data-ext="hues"]'), null);
+  assert.deepEqual(slots.taskMenuItems({ id: 't_release' }, {}, api), []);
+  assert.deepEqual(errors, []);
+});

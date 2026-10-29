@@ -1,0 +1,20 @@
+{
+  "name": "agent-wrangler-task-tints",
+  "version": "1.0.0",
+  "description": "Tint Agent Wrangler tasks with a hexagonal colour wheel while preserving theme transparency.",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "wranglerExtension": {
+    "id": "hues",
+    "label": "Task Tints",
+    "description": "Choose a hue for task backgrounds and minimised tasks without losing theme transparency.",
+    "author": "Task Tints contributors",
+    "requires": ["tasks:read", "board:rebuild", "board:broadcast"],
+    "engines": { "wranglerApi": "^1.53.0" }
+  },
+  "devDependencies": { "@asamuzakjp/css-color": "^3.2.0", "jsdom": "^26.1.0" }
+}

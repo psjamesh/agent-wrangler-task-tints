@@ -1,0 +1,65 @@
+.hues-picker {
+  position: fixed;
+  width: 284px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  margin: 0;
+  padding: 16px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--fg);
+  font: 13px var(--font, system-ui, sans-serif);
+  box-shadow: 0 12px 40px rgb(0 0 0 / .25);
+}
+.hues-picker::backdrop { background: transparent; }
+.hues-picker-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.hues-picker h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.hues-close {
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.hues-task-name { margin: 4px 0 12px; color: var(--fg-muted); overflow-wrap: anywhere; }
+.hues-wheel { position: relative; width: 250px; max-width: 100%; aspect-ratio: 250 / 222; margin: 4px auto 16px; }
+.hues-swatch {
+  position: absolute;
+  width: 7.62%;
+  height: 9.91%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: var(--hues-swatch);
+  color: var(--hues-check);
+  font: 600 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.hues-swatch span { pointer-events: none; }
+.hues-swatch:hover,
+.hues-swatch:focus-visible { z-index: 1; outline: 2px solid var(--hues-check); outline-offset: -4px; filter: brightness(1.08); }
+.hues-swatch:disabled { cursor: wait; }
+.hues-reset {
+  width: 100%;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+.hues-reset:disabled { opacity: .5; cursor: default; }
+.hues-reset:enabled:hover { border-color: var(--fg-muted); }
+.hues-status { min-height: 0; margin: 0; color: var(--fg-muted); font-size: 12px; }
+.hues-status:not(:empty) { margin-top: 10px; }
+.hues-status[role="alert"] { color: var(--red); }
