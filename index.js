@@ -27,6 +27,12 @@ export default {
   defaultEnabled: true,
   requires: ['tasks:read', 'board:rebuild', 'board:broadcast'],
   engines: { wranglerApi: '^1.53.0' },
+  settings: [{
+    key: 'tintTerminal',
+    type: 'toggle',
+    label: 'Tint terminals',
+    help: 'Washes the open session’s terminal with its task’s colour. Tasks without a colour are untouched.',
+  }],
   stores: { hues: () => new HuesStore() },
   handlers: [{
     type: 'hues-set',

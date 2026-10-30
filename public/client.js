@@ -2,6 +2,8 @@ import { colourWheel, neighbour, opacityEffect, taskStyles } from './colours.js'
 
 const paintbrush = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6 4 4 3-5a2.1 2.1 0 0 0-3-3Z"/><path d="m14 6-5 5 4 4 5-5"/><path d="M9 11c-4-1-3 5-7 6 3 4 10 3 11-2"/></svg>';
 
+const terminalTintPercent = 12;
+
 export default {
   register(slots) {
     const doc = globalThis.document;
@@ -14,15 +16,22 @@ export default {
     let colours = {};
     let opacityAdjustments = {};
     let adhocId = 'adhoc';
+    let terminalTint = 0;
     let lastGraph;
     let picker;
     let pending;
 
     function renderStyles() {
       const adjustments = picker?.draftOpacity === undefined ? opacityAdjustments : { ...opacityAdjustments, [picker.task.id]: picker.draftOpacity };
-      const css = taskStyles(colours, adhocId, adjustments);
+      const css = taskStyles(colours, adhocId, adjustments, terminalTint);
       if (sheet.textContent !== css) sheet.textContent = css;
     }
+
+    function readSettings() {
+      terminalTint = api.settings?.().tintTerminal === true ? terminalTintPercent : 0;
+    }
+    readSettings();
+    api.settings?.onChange?.(() => { readSettings(); renderStyles(); });
 
     function transparency() {
       const value = picker.draftOpacity ?? opacityAdjustments[picker.task.id] ?? 0;

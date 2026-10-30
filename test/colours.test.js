@@ -119,3 +119,12 @@ test('tinted cards and rows get a task-coloured border; untinted opacity-only ta
   assert.match(css, /\.task-cell\[data-taskid="t_release"\] :is\(\.session-card,\.worker-row,\.subagent-row,\.snoozed-row\)\{border-color:color-mix\(in srgb, #ff0000 30%, var\(--border-muted\)\)\}/);
   assert.doesNotMatch(css, /t_other"\] :is\([^)]*\)\{border-color/);
 });
+
+test('terminal tint is off by default and washes #term-wrap for the selected card of a coloured task when set', () => {
+  assert.doesNotMatch(taskStyles({ t_release: '#ff0000' }), /term-wrap/);
+  assert.doesNotMatch(taskStyles({}, 'adhoc', { t_release: 20 }, 10), /term-wrap/);
+  const css = taskStyles({ t_release: '#ff0000' }, 'adhoc', {}, 8);
+  assert.match(css, /#term-wrap::after\{content:'';position:absolute;inset:0;z-index:2;pointer-events:none\}/);
+  assert.match(css, /body:has\(#grid \.task-cell\[data-taskid="t_release"\] :is\(\.session-card,\.worker-row,\.subagent-row\)\.selected\) #term-wrap::after\{background-color:color-mix\(in srgb, #ff0000 8%, transparent\)\}/);
+  assert.match(taskStyles({ t_release: '#ff0000' }, 'adhoc', {}, 99), /#ff0000 30%, transparent/);
+});

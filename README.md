@@ -29,7 +29,9 @@ Transparency can also be adjusted without choosing a hue. Picking another hue ke
 
 Colours and transparency adjustments are shared across browsers connected to the same installation. They survive refreshes, restarts, renaming and archiving. Deleting a task removes its saved choices. Turning the extension off keeps those choices and restores ordinary theme surfaces; turning it on restores the tints.
 
-The extension tints task tiles, their session-card bodies, child/worker and snoozed rows, and Agent Wrangler's standard minimised pills. Card bodies keep the task hue when selected; theme status colours identify state through the bars and surrounding halos. Extensions that replace the tray control their own appearance. Terminals and chat keep their own colours.
+The extension tints task tiles, their session-card bodies, child/worker and snoozed rows, and Agent Wrangler's standard minimised pills. Card bodies keep the task hue when selected; theme status colours identify state through the bars and surrounding halos. Extensions that replace the tray control their own appearance. Chat keeps its own colours.
+
+Settings › Extensions › Task Tints has a **Tint terminals** toggle. Off by default; when on, the open session's terminal gets a subtle wash of its task's colour. Tasks without a colour are never washed.
 
 ## Theme compatibility
 

@@ -103,3 +103,7 @@ test('opacity controls reject unknown tasks and invalid values without rebuildin
   assert.equal(rebuilds(), 0);
   assert.deepEqual(host.stores.hues.snapshot(), { colours: {}, opacityAdjustments: {} });
 });
+
+test('the terminal tint is an optional toggle setting', () => {
+  assert.deepEqual(manifest.settings.map(({ key, type }) => ({ key, type })), [{ key: 'tintTerminal', type: 'toggle' }]);
+});
