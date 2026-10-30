@@ -38,11 +38,11 @@ export function opacityEffect(adjustment) {
   return Math.sign(adjustment) * (adjustment / 100) ** 2;
 }
 
-function tint(source, colour, adjustment) {
+function tint(source, colour, adjustment, strength = 0.18) {
   let channels = 'r g b';
   if (colour) {
     const [r, g, b] = [1, 3, 5].map(offset => parseInt(colour.slice(offset, offset + 2), 16));
-    channels = `calc(r * 0.82 + ${r} * 0.18) calc(g * 0.82 + ${g} * 0.18) calc(b * 0.82 + ${b} * 0.18)`;
+    channels = `calc(r * ${1 - strength} + ${r} * ${strength}) calc(g * ${1 - strength} + ${g} * ${strength}) calc(b * ${1 - strength} + ${b} * ${strength})`;
   }
   const effect = opacityEffect(adjustment);
   const alpha = effect < 0 ? `calc(alpha * ${1 + effect})`
@@ -63,6 +63,7 @@ export function taskStyles(colours = {}, adhocId = 'adhoc', opacityAdjustments =
       `#grid .switcher-pill[data-taskid="${taskId}"]{background-color:${tint('var(--pill-idle-bg)', colour, adjustment)}}`,
       `#grid ${tile} :is(.session-card,.worker-row,.subagent-row,.snoozed-row){background-color:${tint('var(--surface)', colour, adjustment)}}`,
       `#grid ${tile} :is(.session-card,.worker-row,.subagent-row):hover{background-color:${tint('var(--surface-2)', colour, adjustment)}}`,
+      ...colour ? [`#grid ${tile} :is(.session-card,.worker-row,.subagent-row,.snoozed-row){border-color:color-mix(in srgb, ${colour} 30%, var(--border-muted))}`] : [],
     ];
   }).join('\n');
 }

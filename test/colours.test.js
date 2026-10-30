@@ -97,9 +97,10 @@ test('card bodies keep the task hue when selected while hover uses the theme hov
   sheet.textContent = taskStyles({ t_release: '#ff0000' });
   const rules = [...sheet.sheet.cssRules];
   const card = dom.window.document.querySelector('.session-card');
-  const normal = rules.filter(rule => card.matches(rule.selectorText)).at(-1);
+  const fills = () => rules.filter(rule => card.matches(rule.selectorText) && rule.style.getPropertyValue('background-color'));
+  const normal = fills().at(-1);
   card.classList.add('selected');
-  const selected = rules.filter(rule => card.matches(rule.selectorText)).at(-1);
+  const selected = fills().at(-1);
   const hover = rules.find(rule => rule.selectorText.includes('.session-card') && rule.selectorText.endsWith(':hover'));
   const customProperty = { '--surface': 'rgba(20,30,40,0.5)', '--surface-2': 'rgba(60,70,80,0.8)', '--blue': '#0064c8', '--selected-tint': '20%' };
   for (const [state, rule, expected] of [
@@ -111,4 +112,10 @@ test('card bodies keep the task hue when selected while hover uses the theme hov
     const actual = convert.colorToRgb(rule.style.getPropertyValue('background-color'), { customProperty });
     for (let channel = 0; channel < 4; channel++) assert.ok(Math.abs(actual[channel] - expected[channel]) < 0.01, `${state} channel ${channel}: ${actual[channel]}`);
   }
+});
+
+test('tinted cards and rows get a task-coloured border; untinted opacity-only tasks keep theme borders', () => {
+  const css = taskStyles({ t_release: '#ff0000' }, 'adhoc', { t_other: 40 });
+  assert.match(css, /\.task-cell\[data-taskid="t_release"\] :is\(\.session-card,\.worker-row,\.subagent-row,\.snoozed-row\)\{border-color:color-mix\(in srgb, #ff0000 30%, var\(--border-muted\)\)\}/);
+  assert.doesNotMatch(css, /t_other"\] :is\([^)]*\)\{border-color/);
 });
