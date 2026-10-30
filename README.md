@@ -19,11 +19,11 @@ Review the extension and install it. There are no runtime dependencies.
 ## Use
 
 1. Open a task's **⋮** menu or right-click its tile, then choose **Colour…**.
-2. Pick a hexagon on the wheel. The colour saves immediately.
+2. Pick a hexagon on the wheel to preview it on the board. Click it again, or click outside the picker, to save it. The × button and Escape discard the preview.
 3. Reopen **Colour…** to adjust **Transparency**. Drag to preview; releasing saves and keeps the picker open. The centre uses **Theme default**, with gentle changes nearby and stronger changes towards the ends.
 4. Choose **Reset** to restore that task's current theme colour and transparency.
 
-Use the arrow keys to move around the wheel, Enter or Space to choose, and Escape to close it. Unassigned supports **Colour…** through its right-click menu. Restore a minimised task to change its colour.
+Use the arrow keys to move around the wheel, Enter or Space to choose (twice to save), and Escape to close it. Unassigned supports **Colour…** through its right-click menu. Restore a minimised task to change its colour.
 
 Transparency can also be adjusted without choosing a hue. Picking another hue keeps the task's transparency adjustment.
 
@@ -31,7 +31,7 @@ Colours and transparency adjustments are shared across browsers connected to the
 
 The extension tints task tiles, their session-card bodies, child/worker and snoozed rows, and Agent Wrangler's standard minimised pills. Card bodies keep the task hue when selected; theme status colours identify state through the bars and surrounding halos. Extensions that replace the tray control their own appearance. Chat keeps its own colours.
 
-Settings › Extensions › Task Tints has a **Tint terminals** toggle. Off by default; when on, the open session's terminal gets a subtle wash of its task's colour. Tasks without a colour are never washed.
+Settings › Extensions › Task Tints has two toggles, applied as soon as they change. **Tint cards** (on by default) controls the card and row tint and border. **Tint session views** (off by default) gives the open session's panel (header, terminal and chat) and diff view a subtle wash of its task's colour. Tasks without a colour are never washed.
 
 ## Theme compatibility
 

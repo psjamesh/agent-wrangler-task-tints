@@ -42,7 +42,7 @@ Save the slider as an integer position from -100 to 100. The builder's chosen cu
 
 Changing the theme recomputes the appearance from the same seed and adjustment using the new theme's defaults, background images and backdrop filters. Card-body backgrounds use `--surface` and hover backgrounds use `--surface-2`; selected cards keep the task hue in their bodies. Theme status colours remain on the surrounding halos, selection rings, dots and status bars. Text, borders, and core's focus, drag and restore indicators keep their own styling. Task names remain visible in both representations; colour is an additional cue.
 
-Terminal text, chat backgrounds, the global board background and task ordering are outside this version. There are no colour categories, automatic colour assignment, per-task tint-strength controls or global palette settings. The one setting, Tint terminals, washes the open session's terminal with its task colour via a fixed-strength overlay on `#term-wrap`.
+Terminal text, chat backgrounds, the global board background and task ordering are outside this version. There are no colour categories, automatic colour assignment, per-task tint-strength controls or global palette settings. Two toggles exist: Tint cards (default on) and Tint session views (default off), the latter washing the open session's panel and diff view with its task colour by blending a fixed 12% of the task colour into the backgrounds of the session header (`#panel`), terminal (`#term`), chat stream, chat composer and diff panel, keeping the theme's transparency and leaving text untouched. A colour click previews the colour; a second click or a click outside the picker saves it.
 
 ## Storage and synchronisation
 

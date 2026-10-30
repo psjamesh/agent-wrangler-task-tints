@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
 import client from '../public/client.js';
 
-function fixture(t, colours = {}, opacityAdjustments = {}) {
+function fixture(t, colours = {}, opacityAdjustments = {}, settings) {
   const dom = new JSDOM('<div id="grid"><div class="task-cell" data-taskid="t_release"><div class="task-head"><button class="task-actions-btn">Actions</button></div><div class="task-body-ext"><div id="host"></div></div></div><button class="switcher-pill" data-taskid="t_other">Other</button></div>', { pretendToBeVisual: true });
   const previous = globalThis.document;
   globalThis.document = dom.window.document;
@@ -12,6 +12,7 @@ function fixture(t, colours = {}, opacityAdjustments = {}) {
   const frames = [];
   let onMessage;
   const api = { send: frame => frames.push(frame), onMessage: fn => { onMessage = fn; } };
+  if (settings) api.settings = Object.assign(() => settings, { set: async () => {}, onChange: () => {} });
   client.register({ api, register: (slot, value) => contributions.set(slot, value) });
   const document = dom.window.document;
   const body = contributions.get('task.body');
@@ -38,7 +39,12 @@ test('Colour… opens a hexagonal wheel and Escape dismisses it without saving',
 test('selecting a section sends its colour and only its own successful acknowledgement closes the picker', t => {
   const f = fixture(t);
   f.open();
-  f.document.querySelector('[data-colour="#ff0000"]').click();
+  const swatch = f.document.querySelector('[data-colour="#ff0000"]');
+  swatch.click();
+  assert.equal(f.frames.length, 0);
+  assert.ok(f.document.querySelector('style[data-hues]').textContent.includes('t_release'));
+  assert.equal(swatch.getAttribute('aria-pressed'), 'true');
+  swatch.click();
   assert.equal(f.frames.length, 1);
   assert.equal(f.frames[0].type, 'hues-set');
   assert.equal(f.frames[0].taskId, 't_release');
@@ -73,6 +79,8 @@ test('arrow keys move the single tab stop without saving; Enter commits the focu
   assert.ok(next.matches('.hues-swatch'));
   assert.notEqual(next, initial);
   assert.equal(f.document.querySelectorAll('.hues-swatch[tabindex="0"]').length, 1);
+  assert.equal(f.frames.length, 0);
+  next.dispatchEvent(new f.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
   assert.equal(f.frames.length, 0);
   next.dispatchEvent(new f.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
   assert.equal(f.frames.length, 1);
@@ -111,6 +119,7 @@ test('closing the picker returns focus to the current task button after a header
 test('a delayed acknowledgement cannot overwrite a newer authoritative task colour', t => {
   const f = fixture(t);
   f.open();
+  f.document.querySelector('[data-colour="#ff0000"]').click();
   f.document.querySelector('[data-colour="#ff0000"]').click();
   const latest = { hues: { colours: { t_release: '#0000ff' } } };
   f.body.update(f.host, f.ctx, latest);
@@ -154,6 +163,7 @@ test('transparency previews while dragging, saves on release and keeps the picke
   assert.equal(slider.disabled, false);
   assert.equal(slider.value, '-50');
   assert.equal(f.document.querySelector('[data-colour="#ff0000"]').getAttribute('aria-pressed'), 'true');
+  f.document.querySelector('[data-colour="#0000ff"]').click();
   f.document.querySelector('[data-colour="#0000ff"]').click();
   assert.equal(f.frames.at(-1).colour, '#0000ff');
 });
@@ -224,4 +234,35 @@ test('transparency saves restore keyboard focus unless the user moves to another
     f.message({ kind: 'saved', requestId: f.frames.at(-1).requestId, ok });
     assert.equal(f.document.activeElement, moveFocus ? close : slider);
   }
+});
+
+test('clicking outside the picker saves a previewed colour, while the close button and Escape discard it', t => {
+  const f = fixture(t);
+  f.open();
+  f.document.querySelector('[data-colour="#ff0000"]').click();
+  f.document.querySelector('.hues-close').click();
+  assert.equal(f.frames.length, 0);
+  assert.equal(f.document.querySelector('.hues-picker'), null);
+  assert.ok(!f.document.querySelector('style[data-hues]').textContent.includes('t_release'));
+  f.open();
+  f.document.querySelector('[data-colour="#ff0000"]').click();
+  f.document.querySelector('.hues-picker').dispatchEvent(new f.window.MouseEvent('click', { bubbles: true, clientX: -10, clientY: -10 }));
+  assert.equal(f.frames.length, 1);
+  assert.equal(f.frames[0].colour, '#ff0000');
+  f.body.update(f.host, f.ctx, { hues: { colours: { t_release: '#ff0000' } } });
+  f.message({ kind: 'saved', requestId: f.frames[0].requestId, taskId: 't_release', colour: '#ff0000', ok: true });
+  assert.equal(f.document.querySelector('.hues-picker'), null);
+  assert.ok(f.document.querySelector('style[data-hues]').textContent.includes('t_release'));
+});
+
+test('a setting changed without an onChange event applies on the next board update', t => {
+  const settings = { tintCards: true };
+  const f = fixture(t, { t_release: '#ff0000' }, {}, settings);
+  const sheet = () => f.document.querySelector('style[data-hues]').textContent;
+  assert.doesNotMatch(sheet(), /chat-stream-wrap/);
+  settings.tintSession = true;
+  settings.tintCards = false;
+  f.body.update(f.host, f.ctx, f.graph);
+  assert.match(sheet(), /chat-stream-wrap/);
+  assert.doesNotMatch(sheet(), /session-card,\.worker-row,\.subagent-row,\.snoozed-row\)\{background/);
 });

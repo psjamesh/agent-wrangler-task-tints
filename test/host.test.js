@@ -36,6 +36,7 @@ test('the real host loader and task-body lifecycle support selection and unloadi
   slots.dispatchMessage({ type: 'ext:hues', kind: 'saved', requestId: frames[0].requestId, ok: true });
   assert.ok(dom.window.document.querySelector('.hues-picker'));
   dom.window.document.querySelector('[data-colour="#ff0000"]').click();
+  dom.window.document.querySelector('[data-colour="#ff0000"]').click();
   assert.equal(frames[1]?.colour, '#ff0000');
   slots.dispatchMessage({ type: 'ext:hues', kind: 'saved', requestId: frames[1].requestId, ok: true });
   assert.equal(dom.window.document.querySelector('.hues-picker'), null);

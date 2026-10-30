@@ -28,10 +28,15 @@ export default {
   requires: ['tasks:read', 'board:rebuild', 'board:broadcast'],
   engines: { wranglerApi: '^1.53.0' },
   settings: [{
-    key: 'tintTerminal',
+    key: 'tintCards',
     type: 'toggle',
-    label: 'Tint terminals',
-    help: 'Washes the open session’s terminal with its task’s colour. Tasks without a colour are untouched.',
+    label: 'Tint cards',
+    help: 'Tints session cards and their rows with the task colour, and gives them a task-coloured border. On by default.',
+  }, {
+    key: 'tintSession',
+    type: 'toggle',
+    label: 'Tint session views',
+    help: 'Washes the open session’s panel (header, terminal and chat) and diff view with its task’s colour. Tasks without a colour are untouched.',
   }],
   stores: { hues: () => new HuesStore() },
   handlers: [{

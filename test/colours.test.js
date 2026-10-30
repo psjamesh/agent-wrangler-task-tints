@@ -120,11 +120,23 @@ test('tinted cards and rows get a task-coloured border; untinted opacity-only ta
   assert.doesNotMatch(css, /t_other"\] :is\([^)]*\)\{border-color/);
 });
 
-test('terminal tint is off by default and washes #term-wrap for the selected card of a coloured task when set', () => {
-  assert.doesNotMatch(taskStyles({ t_release: '#ff0000' }), /term-wrap/);
-  assert.doesNotMatch(taskStyles({}, 'adhoc', { t_release: 20 }, 10), /term-wrap/);
-  const css = taskStyles({ t_release: '#ff0000' }, 'adhoc', {}, 8);
-  assert.match(css, /#term-wrap::after\{content:'';position:absolute;inset:0;z-index:2;pointer-events:none\}/);
-  assert.match(css, /body:has\(#grid \.task-cell\[data-taskid="t_release"\] :is\(\.session-card,\.worker-row,\.subagent-row\)\.selected\) #term-wrap::after\{background-color:color-mix\(in srgb, #ff0000 8%, transparent\)\}/);
-  assert.match(taskStyles({ t_release: '#ff0000' }, 'adhoc', {}, 99), /#ff0000 30%, transparent/);
+test('session tint is off by default and tints the session header, terminal, chat and diff backgrounds for the selected card of a coloured task', () => {
+  assert.doesNotMatch(taskStyles({ t_release: '#ff0000' }), /chat-stream-wrap/);
+  assert.doesNotMatch(taskStyles({}, 'adhoc', { t_release: 20 }, { session: 10 }), /chat-stream-wrap/);
+  const css = taskStyles({ t_release: '#ff0000' }, 'adhoc', {}, { session: 12 });
+  const selected = 'body:has(#grid .task-cell[data-taskid="t_release"] :is(.session-card,.worker-row,.subagent-row).selected)';
+  for (const [pane, source] of [['#panel', 'var(--tile-bg)'], ['#term', 'var(--term-bg)'], ['.chat-stream-wrap', 'var(--term-bg)'], ['.chat-composer', 'var(--tile-bg)'], ['.diff-panel', 'var(--term-bg)']]) {
+    const rule = css.split('\n').find(line => line.startsWith(`${selected} ${pane}{`));
+    assert.ok(rule, pane);
+    assert.ok(rule.includes(`rgb(from ${source} `) && rule.includes('255 * 0.12') && rule.endsWith('/ alpha)}'), rule);
+  }
+  assert.doesNotMatch(css, /::after/);
+});
+
+test('card tinting can be switched off while tiles and pills keep their tint', () => {
+  const css = taskStyles({ t_release: '#ff0000' }, 'adhoc', {}, { cards: false });
+  assert.doesNotMatch(css, /session-card/);
+  assert.match(css, /task-cell\[data-taskid="t_release"\]:not\(\.drop-target\)/);
+  assert.match(css, /switcher-pill/);
+  assert.match(taskStyles({ t_release: '#ff0000' }), /session-card/);
 });

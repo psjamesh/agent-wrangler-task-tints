@@ -2,7 +2,7 @@ import { colourWheel, neighbour, opacityEffect, taskStyles } from './colours.js'
 
 const paintbrush = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6 4 4 3-5a2.1 2.1 0 0 0-3-3Z"/><path d="m14 6-5 5 4 4 5-5"/><path d="M9 11c-4-1-3 5-7 6 3 4 10 3 11-2"/></svg>';
 
-const terminalTintPercent = 12;
+const sessionTintPercent = 12;
 
 export default {
   register(slots) {
@@ -16,22 +16,26 @@ export default {
     let colours = {};
     let opacityAdjustments = {};
     let adhocId = 'adhoc';
-    let terminalTint = 0;
+    let sessionTint = 0;
+    let tintCards = true;
     let lastGraph;
     let picker;
     let pending;
 
     function renderStyles() {
       const adjustments = picker?.draftOpacity === undefined ? opacityAdjustments : { ...opacityAdjustments, [picker.task.id]: picker.draftOpacity };
-      const css = taskStyles(colours, adhocId, adjustments, terminalTint);
+      const shown = picker?.draftColour === undefined ? colours : { ...colours, [picker.task.id]: picker.draftColour };
+      const css = taskStyles(shown, adhocId, adjustments, { session: sessionTint, cards: tintCards });
       if (sheet.textContent !== css) sheet.textContent = css;
     }
 
-    function readSettings() {
-      terminalTint = api.settings?.().tintTerminal === true ? terminalTintPercent : 0;
+    function readSettings(values = api.settings?.() ?? {}) {
+      sessionTint = values.tintSession === true ? sessionTintPercent : 0;
+      tintCards = values.tintCards !== false;
     }
     readSettings();
-    api.settings?.onChange?.(() => { readSettings(); renderStyles(); });
+    if (api.settings && api.settings().tintCards === undefined) Promise.resolve(api.settings.set('tintCards', true)).catch(() => {});
+    api.settings?.onChange?.(values => { readSettings(values); renderStyles(); });
 
     function transparency() {
       const value = picker.draftOpacity ?? opacityAdjustments[picker.task.id] ?? 0;
@@ -46,7 +50,7 @@ export default {
 
     function selection() {
       if (!picker) return;
-      const saved = colours[picker.task.id];
+      const saved = picker.draftColour ?? colours[picker.task.id];
       for (const button of picker.buttons) {
         const selected = button.dataset.colour === saved;
         button.setAttribute('aria-pressed', String(selected));
@@ -59,6 +63,7 @@ export default {
     function receiveGraph(graph) {
       if (!graph || graph === lastGraph) return;
       lastGraph = graph;
+      if (picker && (graph.hues?.colours || {})[picker.task.id] !== colours[picker.task.id]) picker.draftColour = undefined;
       colours = { ...(graph.hues?.colours || {}) };
       opacityAdjustments = { ...(graph.hues?.opacityAdjustments || {}) };
       renderStyles();
@@ -100,6 +105,25 @@ export default {
       renderStyles();
       selection();
       if (focusSlider && (doc.activeElement === doc.body || doc.activeElement === picker.slider)) picker.slider.focus();
+    }
+
+    function chooseColour(colour) {
+      if (!picker || pending) return;
+      const saved = colours[picker.task.id];
+      if ((picker.draftColour ?? saved) === colour) {
+        if (colour === saved) closePicker();
+        else save('hues-set', { colour });
+        return;
+      }
+      picker.draftColour = colour;
+      picker.status.textContent = '';
+      renderStyles();
+      selection();
+    }
+
+    function dismiss() {
+      if (picker && !pending && picker.draftColour !== undefined && picker.draftColour !== colours[picker.task.id]) save('hues-set', { colour: picker.draftColour });
+      else closePicker();
     }
 
     function failed(message) {
@@ -161,11 +185,11 @@ export default {
         button.setAttribute('aria-label', button.title);
         button.tabIndex = index === focusIndex ? 0 : -1;
         button.append(doc.createElement('span'));
-        button.addEventListener('click', () => save('hues-set', { colour: cell.colour }));
+        button.addEventListener('click', () => chooseColour(cell.colour));
         button.addEventListener('keydown', event => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            save('hues-set', { colour: cell.colour });
+            chooseColour(cell.colour);
           } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home'].includes(event.key)) {
             event.preventDefault();
             const next = neighbour(cells, index, event.key);
@@ -237,7 +261,7 @@ export default {
       el.addEventListener('click', event => {
         if (event.target !== el) return;
         const bounds = el.getBoundingClientRect();
-        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closePicker();
+        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dismiss();
       });
       doc.body.append(el);
       if (typeof el.showModal === 'function') el.showModal();
@@ -270,7 +294,11 @@ export default {
         adhocId = ctx.adhocId;
         if (!sheet.isConnected) el.append(sheet);
       },
-      update(_el, _ctx, graph) { receiveGraph(graph); },
+      update(_el, _ctx, graph) {
+        readSettings();
+        receiveGraph(graph);
+        renderStyles();
+      },
       unmount(el) {
         hosts.delete(el);
         if (sheet.parentElement === el && hosts.size) hosts.values().next().value.append(sheet);

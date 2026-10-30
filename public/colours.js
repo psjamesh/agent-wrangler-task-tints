@@ -50,8 +50,9 @@ function tint(source, colour, adjustment, strength = 0.18) {
   return `rgb(from ${source} ${channels} / ${alpha})`;
 }
 
-export function taskStyles(colours = {}, adhocId = 'adhoc', opacityAdjustments = {}, terminalTint = 0) {
-  const terminal = Number.isFinite(terminalTint) ? Math.min(30, Math.max(0, terminalTint)) : 0;
+const sessionPanes = [['#panel', 'var(--tile-bg)'], ['#term', 'var(--term-bg)'], ['.chat-stream-wrap', 'var(--term-bg)'], ['.chat-composer', 'var(--tile-bg)'], ['.diff-panel', 'var(--term-bg)']];
+
+export function taskStyles(colours = {}, adhocId = 'adhoc', opacityAdjustments = {}, { session = 0, cards = true } = {}) {
   const rules = [...new Set([...Object.keys(colours), ...Object.keys(opacityAdjustments)])].flatMap(taskId => {
     if (!validId.test(taskId)) return [];
     const colour = typeof colours[taskId] === 'string' && validColour.test(colours[taskId]) ? colours[taskId] : undefined;
@@ -62,12 +63,13 @@ export function taskStyles(colours = {}, adhocId = 'adhoc', opacityAdjustments =
     return [
       `#grid ${tile}:not(.drop-target){background-color:${tint('var(--tile-bg)', colour, adjustment)}}`,
       `#grid .switcher-pill[data-taskid="${taskId}"]{background-color:${tint('var(--pill-idle-bg)', colour, adjustment)}}`,
-      `#grid ${tile} :is(.session-card,.worker-row,.subagent-row,.snoozed-row){background-color:${tint('var(--surface)', colour, adjustment)}}`,
-      `#grid ${tile} :is(.session-card,.worker-row,.subagent-row):hover{background-color:${tint('var(--surface-2)', colour, adjustment)}}`,
-      ...colour ? [`#grid ${tile} :is(.session-card,.worker-row,.subagent-row,.snoozed-row){border-color:color-mix(in srgb, ${colour} 30%, var(--border-muted))}`] : [],
-      ...colour && terminal ? [`body:has(#grid ${tile} :is(.session-card,.worker-row,.subagent-row).selected) #term-wrap::after{background-color:color-mix(in srgb, ${colour} ${terminal}%, transparent)}`] : [],
+      ...cards ? [
+        `#grid ${tile} :is(.session-card,.worker-row,.subagent-row,.snoozed-row){background-color:${tint('var(--surface)', colour, adjustment)}}`,
+        `#grid ${tile} :is(.session-card,.worker-row,.subagent-row):hover{background-color:${tint('var(--surface-2)', colour, adjustment)}}`,
+        ...colour ? [`#grid ${tile} :is(.session-card,.worker-row,.subagent-row,.snoozed-row){border-color:color-mix(in srgb, ${colour} 30%, var(--border-muted))}`] : [],
+      ] : [],
+      ...colour && session ? sessionPanes.map(([pane, source]) => `body:has(#grid ${tile} :is(.session-card,.worker-row,.subagent-row).selected) ${pane}{background-color:${tint(source, colour, 0, session / 100)}}`) : [],
     ];
   });
-  if (terminal && rules.some(rule => rule.includes('#term-wrap::after'))) rules.unshift("#term-wrap{position:relative}#term-wrap::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none}");
   return rules.join('\n');
 }

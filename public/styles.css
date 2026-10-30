@@ -30,8 +30,8 @@
 .hues-wheel { position: relative; width: 250px; max-width: 100%; aspect-ratio: 250 / 222; margin: 4px auto 16px; }
 .hues-swatch {
   position: absolute;
-  width: 7.62%;
-  height: 9.91%;
+  width: 8.3%;
+  height: 10.8%;
   transform: translate(-50%, -50%);
   display: grid;
   place-items: center;
